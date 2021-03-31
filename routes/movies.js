@@ -1,15 +1,20 @@
+/**La unicas responsabilidad de las rutas es como recibir parametros y como enviarselo a los servicios, los servicios si sabem que hacedr con los dartoa y devolver lo deseado */
+
 const express=require('express');
 
-const {moviesMock} = require('../utils/mocks/movies');
+const MoviesService= require('../services/movies');
 
 const moviesApi=(app)=>{
     const router = express.Router();
     app.use('/api/movies', router);
 
+    const moviesService= new MoviesService();
     /**Ruta get lista todos */
     router.get("/", async (req, res, next)=>{
         try{
-            const movies = await Promise.resolve(moviesMock);
+            const {tags} =  req.query;
+
+            const movies = await moviesService.getMovies(tags);
             res.status(200).json(
                 {
                     data:movies,
@@ -24,11 +29,13 @@ const moviesApi=(app)=>{
 
     /**Ruta get:/id muestra la que cumple con el id */
     router.get("/:movieId", async (req, res, next)=>{
+        const {movieId} = req.params;
         try{
-            const movies = await Promise.resolve(moviesMock);
+            const movie = await moviesService.getMovie( { movieId } );
+            console.log("El valor de movie id es", movie);
             res.status(200).json(
                 {
-                    data:movies[0],
+                    data:movie,
                     message:'movies retrieved'
                 }
             );
@@ -40,12 +47,16 @@ const moviesApi=(app)=>{
 
     /**Ruta post, crea una nueva movie*/
     router.post("/", async (req, res, next)=>{
+                
+        //const moviesData= req.body;
+        const { body:movie } = req;  //obtenemos el cuerpo pero erecuerda que se manda en diferentes foramtos, puede ser www-format que son pares de valores o raw que es un texto plano o json y se puede atrapar tal cual, le ponemos alias movie.
+
         try{
-            const createMovieId = await Promise.resolve(moviesMock[0].id);
+            const createdMovieId = await moviesService.createMovie({movie});
             
             res.status(201).json(
                 {
-                    data: createMovieId,
+                    data: createdMovieId,
                     message:'movie retrieve'
                 }
             );
@@ -56,9 +67,13 @@ const moviesApi=(app)=>{
     });
 
     /**Ruta put:/id Actualiza una nueva povie */
-    router.put("/:id", async (req, res, next)=>{
+    router.put("/:movieId", async (req, res, next)=>{
+        const {movieId} = req.params; //Par saber cual actualizar, recuerda que como es desstructuración entonces se deben llamar igual tanto la ruta /:movieId como cuando obtenemos el valor
+        const { body:movie } = req; 
         try{
-            const updatedMovieId = await Promise.resolve(moviesMock[0].id);
+            
+            const updatedMovieId = await moviesService.updateMovie({movieId, movie});  //porque entre {}
+
             res.status(200).json(
                 {
                     data: updatedMovieId,
@@ -72,9 +87,12 @@ const moviesApi=(app)=>{
     });
 
     /**Ruta delete:/id elimina la que cumple con el id */
-    router.delete("/:id", async (req, res, next)=>{
+    router.delete("/:movieId", async (req, res, next)=>{
+        const {movieId} = req.params;
+
         try{
-            const deletedMovieId = await Promise.resolve(moviesMock[0].id);
+            const deletedMovieId = await moviesService.deleteMovie({movieId});
+            
             res.status(200).json(
                 {
                     data:deletedMovieId,
