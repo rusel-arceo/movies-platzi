@@ -2,19 +2,31 @@
 
 const express=require('express');
 
+//requierimos los esquemas
 const MoviesService= require('../services/movies');
+const {
+    movieIdSchema,
+    createMovieSchema,
+    updateMovieSchema,
+   // testSchema
+} = require('../utils/schema/movies')
+//requerimos el middleware que usa el join para que realice las validaciones según el esquema
 
-const moviesApi=(app)=>{
+const validationHandler=require('../utils/middleware/validationHandler');
+
+const moviesApi =(app) =>{
     const router = express.Router();
     app.use('/api/movies', router);
 
     const moviesService= new MoviesService();
     /**Ruta get lista todos */
     router.get("/", async (req, res, next)=>{
-        try{
-            const {tags} =  req.query;
+        const { tags } =  req.query;
 
-            const movies = await moviesService.getMovies(tags);
+        try{
+
+            const movies = await moviesService.getMovies({tags});
+                       
             res.status(200).json(
                 {
                     data:movies,
@@ -28,7 +40,8 @@ const moviesApi=(app)=>{
     });
 
     /**Ruta get:/id muestra la que cumple con el id */
-    router.get("/:movieId", async (req, res, next)=>{
+    //La funcion de enmedio es el middleware que verifica datos, recibe el squema y de donde sacar los datos, por defecto los saca del body. El parametro movieIF tendra un squema movieIdSchema, y los saca de los parametros
+    router.get("/:movieId", /*validationHandler( { movieId: movieIdSchema}, 'params'),*/async (req, res, next)=>{
         const {movieId} = req.params;
         try{
             const movie = await moviesService.getMovie( { movieId } );
@@ -46,7 +59,8 @@ const moviesApi=(app)=>{
     });
 
     /**Ruta post, crea una nueva movie*/
-    router.post("/", async (req, res, next)=>{
+    // mandamos el esquema {createMovieSchema}, de donde sale 'body'
+    router.post("/", validationHandler( { createMovieSchema}) , async (req, res, next)=>{
                 
         //const moviesData= req.body;
         const { body:movie } = req;  //obtenemos el cuerpo pero erecuerda que se manda en diferentes foramtos, puede ser www-format que son pares de valores o raw que es un texto plano o json y se puede atrapar tal cual, le ponemos alias movie.
@@ -67,10 +81,12 @@ const moviesApi=(app)=>{
     });
 
     /**Ruta put:/id Actualiza una nueva povie */
-    router.put("/:movieId", async (req, res, next)=>{
-        const {movieId} = req.params; //Par saber cual actualizar, recuerda que como es desstructuración entonces se deben llamar igual tanto la ruta /:movieId como cuando obtenemos el valor
+    //podemos agregar mas de un middleware, uno verifica el movieID y el otro el cuerpo de la pelicula en caso que se envie pues no son reqeridos
+    router.put("/:movieId", /*validationHandler( { movieId: movieIdSchema}, 'params') ,validationHandler( { updateMovieSchema}, 'body') , */async (req, res, next)=>{
+        const {movieId} = req.params; //Par saber cual actualizar, recuerda que como es desstructuración entonces se deben llamar igual tanto|   la ruta /:movieId como cuando obtenemos el valor
         const { body:movie } = req; 
         try{
+
             
             const updatedMovieId = await moviesService.updateMovie({movieId, movie});  //porque entre {}
 
@@ -87,8 +103,8 @@ const moviesApi=(app)=>{
     });
 
     /**Ruta delete:/id elimina la que cumple con el id */
-    router.delete("/:movieId", async (req, res, next)=>{
-        const {movieId} = req.params;
+    router.delete("/:movieId",/* validationHandler( { movieId: movieIdSchema}, 'params') , */async (req, res, next)=>{
+        const { movieId}  = req.params;
 
         try{
             const deletedMovieId = await moviesService.deleteMovie({movieId});
